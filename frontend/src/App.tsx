@@ -11,6 +11,7 @@ function App() {
   const [emailText, setEmailText] = useState("")
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFile = (f: File) => {
     setFile(f);
@@ -42,6 +43,24 @@ function App() {
     }
   };
 
+  const analyzeEmail = async () => {
+    if (!emailText) return;
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:8000/predict/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: emailText })
+      });
+      const data = await res.json();
+      setResult({ categoria: data.category, mensagem: data.response });
+    } catch (err) {
+      setResult({ categoria: "Erro", mensagem: "Não foi possível processar o email." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <div className='App'>
@@ -53,7 +72,9 @@ function App() {
           <div className='text-section'>
             <div className='email-form'>
               <textarea placeholder="Digite o texto do email" className='email-input' value={emailText} onChange={(e) => setEmailText(e.target.value)} />
-              <button type="submit" className='submit-button' onClick={() => setEmailText(emailText)}><IoSend /></button>
+              <button type="submit" className='submit-button' onClick={analyzeEmail}>
+                {loading ? "Processando..." : <IoSend />}
+              </button>
             </div>
             <div className='result'>
               <h2>Resultado</h2>

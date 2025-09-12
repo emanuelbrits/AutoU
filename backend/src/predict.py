@@ -10,6 +10,10 @@ vectorizer = joblib.load(VECTOR_PATH)
 
 def predict_email(text: str) -> str:
     processed = preprocess_text(text)
+    
+    if len(processed.split()) < 3:
+        return "Improdutivo"
+    
     vectorized = vectorizer.transform([processed])
     prediction = clf.predict(vectorized)[0]
     return prediction
