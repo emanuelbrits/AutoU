@@ -4,6 +4,7 @@ import { FaFile } from 'react-icons/fa'
 import { useState } from 'react'
 import { IoSend } from 'react-icons/io5'
 import { FaFileArrowUp } from 'react-icons/fa6'
+import FeedbackSection from './components/feedbackSection'
 
 function App() {
   const [isText, setIsText] = useState(true)
@@ -12,11 +13,6 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleFile = (f: File) => {
-    setFile(f);
-    setResult({ categoria: "Produtivo", mensagem: `Arquivo "${f.name}" enviado com sucesso!` });
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -61,12 +57,58 @@ function App() {
     }
   };
 
+  const processFile = async (f: File) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", f);
+
+      const extractRes = await fetch("http://localhost:8000/extract-text/", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!extractRes.ok) throw new Error("Erro ao extrair texto do arquivo.");
+
+      const extractData = await extractRes.json();
+      const extractedText = extractData.text;
+
+      const predictRes = await fetch("http://localhost:8000/predict/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: extractedText }),
+      });
+
+      if (!predictRes.ok) throw new Error("Erro ao analisar o texto extraído.");
+
+      const predictData = await predictRes.json();
+
+      setResult({
+        categoria: predictData.category,
+        mensagem: predictData.response,
+      });
+    } catch (err) {
+      console.error(err);
+      setResult({
+        categoria: "Erro",
+        mensagem: "Não foi possível processar o arquivo.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFile = (f: File) => {
+    setFile(f);
+    processFile(f);
+  };
+
   return (
     <>
       <div className='App'>
         <div className='switch-buttons'>
-          <button className={isText ? 'active' : ''} onClick={() => { setIsText(true); setResult(null); }}><BiText /> Texto</button>
-          <button className={!isText ? 'active' : ''} onClick={() => { setIsText(false); setResult(null); }}><FaFile /> Arquivo</button>
+          <button className={isText ? 'active' : ''} onClick={() => { setIsText(true); setResult(null); setFile(null); }}><BiText /> Texto</button>
+          <button className={!isText ? 'active' : ''} onClick={() => { setIsText(false); setResult(null); setEmailText(""); }}><FaFile /> Arquivo</button>
         </div>
         {isText ? (
           <div className='text-section'>
@@ -79,10 +121,13 @@ function App() {
             <div className='result'>
               <h2>Resultado</h2>
               {result ? (
-                <div className='result-content'>
-                  <p>Categoria: {result.categoria}</p>
-                  <p>Mensagem sugerida: {result.mensagem}</p>
-                </div>
+                <>
+                  <div className="result-content">
+                    <p>Categoria: {result.categoria}</p>
+                    <p>Mensagem sugerida: {result.mensagem}</p>
+                  </div>
+                  {result.categoria !== "Erro" && <FeedbackSection result={result} />}
+                </>
               ) : (
                 <p className='no-result'>Envie um email para checar a categoria e resposta sugerida</p>
               )}
@@ -108,7 +153,7 @@ function App() {
                 <FaFileArrowUp size={48} />
                 {!file ? (
                   <label htmlFor="file-upload" className="file-label">
-                    Arraste o arquivo <br />
+                    Arraste um arquivo pdf ou txt <br />
                     <span className="file-hint">ou clique aqui</span>
                   </label>
                 ) : (
@@ -117,7 +162,10 @@ function App() {
                     <button
                       type="button"
                       className="remove-button"
-                      onClick={() => setFile(null)}
+                      onClick={() => {
+                        setFile(null);
+                        setResult(null);
+                      }}
                     >
                       Limpar
                     </button>
@@ -129,10 +177,13 @@ function App() {
             <div className="result">
               <h2>Resultado</h2>
               {result ? (
-                <div className="result-content">
-                  <p>Categoria: {result.categoria}</p>
-                  <p>Mensagem sugerida: {result.mensagem}</p>
-                </div>
+                <>
+                  <div className="result-content">
+                    <p>Categoria: {result.categoria}</p>
+                    <p>Mensagem sugerida: {result.mensagem}</p>
+                  </div>
+                  {result.categoria !== "Erro" && <FeedbackSection result={result} />}
+                </>
               ) : (
                 <p className="no-result">
                   Adicione um arquivo para checar a categoria e resposta sugerida
