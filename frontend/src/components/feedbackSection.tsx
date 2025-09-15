@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./feedbackSection.css";
 
-export default function FeedbackSection({ result }: { result: { categoria: string; mensagem: string } }) {
+export default function FeedbackSection({ }: { result: { categoria: string; mensagem: string } }) {
     const [feedback, setFeedback] = useState<"yes" | "no" | null>(null);
     const [suggestion, setSuggestion] = useState("");
 
